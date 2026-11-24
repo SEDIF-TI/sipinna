@@ -25,7 +25,7 @@ public class SecurityConfig {
      }
      @Bean
      public UserDetailsService userDetailsService(UsuarioRepository repo){
-        return identificador -> repo.findByCorreoUsername(identificador, identificador)
+        return identificador -> repo.findByCorreoOrUsername(identificador, identificador)
         .map(u -> User.withUsername(u.getUsername())
         .password(u.getPassword())
         .roles(u.getRol().name())
