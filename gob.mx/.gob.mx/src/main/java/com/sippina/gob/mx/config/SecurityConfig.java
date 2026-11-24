@@ -2,19 +2,22 @@ package com.sippina.gob.mx.config;
 
 import com.sippina.gob.mx.repository.UsuarioRepository;
 
-
+import java.util.ArrayList;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import java.util.ArrayList;
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity 
@@ -23,15 +26,22 @@ public class SecurityConfig {
      public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
      }
-     @Bean
-     public UserDetailsService userDetailsService(UsuarioRepository repo){
+         @Bean
+     public UserDetailsService userDetailsService(UsuarioRepository repo) {
         return identificador -> repo.findByCorreoOrUsername(identificador, identificador)
-        .map(u -> User.withUsername(u.getUsername())
-        .password(u.getPassword())
-        .roles(u.getRol().name())
-        .disabled(!u.isActivo())
-        .build())
-        .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
+            .map(u -> {
+                List<SimpleGrantedAuthority> autoridades = new ArrayList<>();
+                autoridades.add(new SimpleGrantedAuthority("ROLE_" + u.getRol().getNombre()));
+                u.getRol().getPermisos()
+                    .forEach(p -> autoridades.add(new SimpleGrantedAuthority(p.getNombre())));
+
+                return User.withUsername(u.getUsername())
+                    .password(u.getPassword())
+                    .authorities(autoridades)
+                    .disabled(!u.isActivo())
+                    .build();
+            })
+            .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
      }
 
      @Bean
