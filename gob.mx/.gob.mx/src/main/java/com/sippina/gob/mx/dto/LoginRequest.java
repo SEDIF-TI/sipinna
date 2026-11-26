@@ -1,4 +1,11 @@
 package com.sippina.gob.mx.dto;
 
-public record LoginRequest(String identificador, String password) {
+import jakarta.validation.constraints.NotBlank;
+
+public record LoginRequest(
+        @NotBlank(message = "El usuario o correo es obligatorio")
+        String identificador,
+
+        @NotBlank(message = "La contraseña es obligatoria")
+        String password) {
 }

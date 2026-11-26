@@ -4,6 +4,7 @@ import com.sippina.gob.mx.dto.LoginRequest;
 import com.sippina.gob.mx.dto.LoginResponse;
 import com.sippina.gob.mx.dto.UsuarioActualResponse;
 import com.sippina.gob.mx.service.AuthService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -17,7 +18,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request) {
+    public ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return ResponseEntity.ok(authService.login(request));
     }
 
