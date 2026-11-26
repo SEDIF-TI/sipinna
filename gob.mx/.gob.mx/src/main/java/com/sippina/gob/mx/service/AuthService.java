@@ -2,6 +2,7 @@ package com.sippina.gob.mx.service;
 
 import com.sippina.gob.mx.dto.LoginRequest;
 import com.sippina.gob.mx.dto.LoginResponse;
+import com.sippina.gob.mx.dto.UsuarioActualResponse;
 import com.sippina.gob.mx.model.Permiso;
 import com.sippina.gob.mx.model.Usuario;
 import com.sippina.gob.mx.repository.UsuarioRepository;
@@ -39,19 +40,32 @@ public class AuthService {
         usuario.setUltimoAcceso(LocalDateTime.now());
 
         // 4. Access Token
-        String token = jwtService.generarToken(usuario);
-
-        Set<String> permisos = usuario.getRol().getPermisos().stream()
-                .map(Permiso::getNombre)
-                .collect(Collectors.toSet());
-
         return new LoginResponse(
-                token,
+                jwtService.generarToken(usuario),
                 "Bearer",
                 jwtService.getExpiracionSegundos(),
                 usuario.getId(),
                 usuario.getUsername(),
                 usuario.getRol().getNombre(),
-                permisos);
+                nombresDePermisos(usuario));
+    }
+
+    @Transactional(readOnly = true)
+    public UsuarioActualResponse usuarioActual(String username) {
+        Usuario usuario = usuarioRepository.findByCorreoOrUsername(username, username).orElseThrow();
+
+        return new UsuarioActualResponse(
+                usuario.getId(),
+                usuario.getUsername(),
+                usuario.getCorreo(),
+                usuario.getRol().getNombre(),
+                usuario.getSecretaria() != null ? usuario.getSecretaria().getNombre() : null,
+                nombresDePermisos(usuario));
+    }
+
+    private Set<String> nombresDePermisos(Usuario usuario) {
+        return usuario.getRol().getPermisos().stream()
+                .map(Permiso::getNombre)
+                .collect(Collectors.toSet());
     }
 }
