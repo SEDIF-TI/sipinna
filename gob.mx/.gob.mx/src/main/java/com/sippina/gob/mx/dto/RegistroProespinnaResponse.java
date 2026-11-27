@@ -24,6 +24,8 @@ public record RegistroProespinnaResponse(
         String creadoPor,
         LocalDateTime fechaCreacion,
         LocalDateTime fechaActualizacion,
-        LocalDateTime fechaEnvio
+        LocalDateTime fechaEnvio,
+        /** Último comentario del revisor cuando el registro está OBSERVADO; null en otro caso. */
+        String observacion
 ) {
 }

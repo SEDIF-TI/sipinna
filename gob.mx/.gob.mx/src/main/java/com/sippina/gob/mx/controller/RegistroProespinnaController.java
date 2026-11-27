@@ -1,5 +1,6 @@
 package com.sippina.gob.mx.controller;
 
+import com.sippina.gob.mx.dto.HistorialItem;
 import com.sippina.gob.mx.dto.RegistroProespinnaRequest;
 import com.sippina.gob.mx.dto.RegistroProespinnaResponse;
 import com.sippina.gob.mx.service.RegistroProespinnaService;
@@ -50,6 +51,13 @@ public class RegistroProespinnaController {
         registroService.eliminar(id, auth.getName());
     }
 
+    /** Historial de estatus (creado, enviado, observado, reenviado, aprobado). */
+    @GetMapping("/{id}/historial")
+    public List<HistorialItem> historial(@PathVariable Long id, Authentication auth) {
+        return registroService.historial(id, auth.getName());
+    }
+
+    /** Envía un BORRADOR o reenvía un OBSERVADO ya corregido. */
     @PostMapping("/{id}/enviar")
     public RegistroProespinnaResponse enviar(@PathVariable Long id, Authentication auth) {
         return registroService.enviar(id, auth.getName());
