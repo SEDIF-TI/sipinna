@@ -1,5 +1,6 @@
 package com.sippina.gob.mx.security;
 
+import com.sippina.gob.mx.repository.TokenRevocadoRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -27,6 +28,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
+    private final TokenRevocadoRepository tokenRevocadoRepository;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,
@@ -45,14 +47,21 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             // 2. Firma y expiración. Si falla, lanza JwtException
             Claims claims = jwtService.validarYLeer(token);
+
+            // 3. ¿Se cerró sesión con este token? Entonces queda sin autenticar
+            if (tokenRevocadoRepository.existsByJti(claims.getId())) {
+                filterChain.doFilter(request, response);
+                return;
+            }
+
             String username = claims.getSubject();
 
             if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                // 3. Datos ACTUALES de la base: rol, permisos y si sigue activo
+                // 4. Datos ACTUALES de la base: rol, permisos y si sigue activo
                 UserDetails usuario = userDetailsService.loadUserByUsername(username);
 
                 if (usuario.isEnabled()) {
-                    // 4. Le decimos a Spring quién hace esta petición
+                    // 5. Le decimos a Spring quién hace esta petición
                     UsernamePasswordAuthenticationToken autenticacion =
                             new UsernamePasswordAuthenticationToken(usuario, null, usuario.getAuthorities());
                     autenticacion.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -64,7 +73,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             SecurityContextHolder.clearContext();
         }
 
-        // 5. Continúa hacia el controller (o hacia el 401, si no quedó autenticado)
+        // 6. Continúa hacia el controller (o hacia el 401, si no quedó autenticado)
         filterChain.doFilter(request, response);
     }
 }
