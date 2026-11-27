@@ -13,6 +13,7 @@ import io.jsonwebtoken.Claims;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,12 +30,18 @@ public class AuthService {
     private final UsuarioRepository usuarioRepository;
     private final TokenRevocadoRepository tokenRevocadoRepository;
     private final JwtService jwtService;
+    private final AuditoriaService auditoriaService;
 
     @Transactional
     public LoginResponse login(LoginRequest request) {
-        // 1. Valida usuario, estado activo y contraseña. Si falla, lanza excepción y se detiene.
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.identificador(), request.password()));
+        // 1. Valida usuario, estado activo y contraseña. Si falla, se audita y se relanza la excepción.
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.identificador(), request.password()));
+        } catch (AuthenticationException e) {
+            auditoriaService.registrar(request.identificador(), "LOGIN_FALLIDO", null);
+            throw e;
+        }
 
         // 2. Ya autenticado: traemos la entidad completa
         Usuario usuario = usuarioRepository
@@ -43,6 +50,7 @@ public class AuthService {
 
         // 3. Último acceso (se guarda solo al terminar, gracias a @Transactional)
         usuario.setUltimoAcceso(LocalDateTime.now());
+        auditoriaService.registrar(usuario.getUsername(), "LOGIN_EXITOSO", null);
 
         // 4. Access Token
         return new LoginResponse(
@@ -76,6 +84,7 @@ public class AuthService {
             LocalDateTime expira = LocalDateTime.ofInstant(
                     claims.getExpiration().toInstant(), ZoneId.systemDefault());
             tokenRevocadoRepository.save(new TokenRevocado(claims.getId(), expira));
+            auditoriaService.registrar(claims.getSubject(), "LOGOUT", null);
         }
     }
 
