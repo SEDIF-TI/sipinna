@@ -3,6 +3,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { formatearFecha } from '../../api/admin';
 import { ESTATUS, Estatus, isoADmy, Periodo, proespinnaApi, Registro } from '../../api/proespinna';
 import { useSesion } from '../../auth/AuthContext';
+import { ROLES } from '../../auth/types';
 import { Aviso, Boton, Dialogo, Opciones } from '../../components/form';
 import Tabla, { Celda, Columna } from '../../components/Tabla';
 import { Encabezado, EstadoVacio } from '../../components/ui';
@@ -18,9 +19,11 @@ type Filtro = 'TODOS' | Estatus;
 
 export default function CapturaListaScreen({ onNuevo, onAbrir, mensaje }: Props) {
   const { token, usuario } = useSesion();
+  // Sin secretaría el backend rechaza la captura: no se piden los registros.
+  const sinSecretaria = !usuario.secretaria;
   const [registros, setRegistros] = useState<Registro[]>([]);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(!sinSecretaria);
   const [error, setError] = useState<string | null>(null);
   const [exito, setExito] = useState<string | null>(mensaje ?? null);
   const [filtro, setFiltro] = useState<Filtro>('TODOS');
@@ -42,8 +45,8 @@ export default function CapturaListaScreen({ onNuevo, onAbrir, mensaje }: Props)
   );
 
   useEffect(() => {
-    cargar();
-  }, [cargar]);
+    if (!sinSecretaria) cargar();
+  }, [cargar, sinSecretaria]);
 
   // Periodos que aparecen en los registros (abiertos o no) para el filtro.
   const periodosFiltro = useMemo(() => {
@@ -119,6 +122,24 @@ export default function CapturaListaScreen({ onNuevo, onAbrir, mensaje }: Props)
     },
   ];
 
+  if (sinSecretaria) {
+    return (
+      <>
+        <Encabezado
+          titulo="Captura PROESPINNA"
+          subtitulo="Acciones de cada secretaría a favor de niñas, niños y adolescentes, por trimestre."
+        />
+        <Aviso
+          texto={
+            usuario.rol === ROLES.SUPERADMINISTRADOR
+              ? 'La captura la hace el capturista de cada secretaría. Tu cuenta de superadministrador no tiene una secretaría asignada, por eso aquí no puedes registrar acciones.'
+              : 'Tu cuenta no tiene una secretaría asignada. Pide al administrador que te asigne una para poder capturar.'
+          }
+        />
+      </>
+    );
+  }
+
   return (
     <>
       <Encabezado
@@ -131,10 +152,7 @@ export default function CapturaListaScreen({ onNuevo, onAbrir, mensaje }: Props)
         }
       />
 
-      {!cargando && !usuario.secretaria ? (
-        <Aviso tono="error" texto="Tu cuenta no tiene una secretaría asignada. Pide al administrador que te asigne una para poder capturar." />
-      ) : null}
-      {!cargando && usuario.secretaria ? (
+      {!cargando ? (
         periodos.length > 0 ? (
           <Aviso
             tono="exito"

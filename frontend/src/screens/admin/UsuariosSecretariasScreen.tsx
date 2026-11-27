@@ -2,10 +2,17 @@ import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Encabezado } from '../../components/ui';
 import { colors } from '../../theme';
+import AuditoriaTab from './AuditoriaTab';
 import SecretariasTab from './SecretariasTab';
 import UsuariosTab from './UsuariosTab';
 
-type Pestana = 'usuarios' | 'secretarias';
+type Pestana = 'usuarios' | 'secretarias' | 'auditoria';
+
+const PESTANAS: Record<Pestana, { titulo: string; subtitulo: string }> = {
+  usuarios: { titulo: 'Usuarios', subtitulo: 'Da de alta a las personas que usan SIPINNA y asígnales su secretaría.' },
+  secretarias: { titulo: 'Secretarías', subtitulo: 'Cada secretaría tiene un solo capturista asignado.' },
+  auditoria: { titulo: 'Auditoría', subtitulo: 'Quién hizo qué y cuándo dentro de SIPINNA.' },
+};
 
 // Módulo "usuarios" del menú (permiso GESTIONAR_USUARIOS, solo superadmin).
 export default function UsuariosSecretariasScreen() {
@@ -13,16 +20,9 @@ export default function UsuariosSecretariasScreen() {
 
   return (
     <>
-      <Encabezado
-        titulo="Usuarios y secretarías"
-        subtitulo={
-          pestana === 'usuarios'
-            ? 'Da de alta a las personas que usan SIPINNA y asígnales su secretaría.'
-            : 'Cada secretaría tiene un solo capturista asignado.'
-        }
-      />
+      <Encabezado titulo="Usuarios y secretarías" subtitulo={PESTANAS[pestana].subtitulo} />
       <View style={styles.pestanas} accessibilityRole="tablist">
-        {(['usuarios', 'secretarias'] as Pestana[]).map((p) => {
+        {(Object.keys(PESTANAS) as Pestana[]).map((p) => {
           const activa = p === pestana;
           return (
             <Pressable
@@ -33,13 +33,13 @@ export default function UsuariosSecretariasScreen() {
               style={[styles.pestana, activa && styles.pestanaActiva]}
             >
               <Text style={[styles.pestanaTexto, activa && styles.pestanaTextoActiva]}>
-                {p === 'usuarios' ? 'Usuarios' : 'Secretarías'}
+                {PESTANAS[p].titulo}
               </Text>
             </Pressable>
           );
         })}
       </View>
-      {pestana === 'usuarios' ? <UsuariosTab /> : <SecretariasTab />}
+      {pestana === 'usuarios' ? <UsuariosTab /> : pestana === 'secretarias' ? <SecretariasTab /> : <AuditoriaTab />}
     </>
   );
 }

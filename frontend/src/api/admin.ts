@@ -39,7 +39,19 @@ export type Secretaria = {
 
 export type SecretariaDatos = { nombre: string; siglas: string };
 
+export type EventoAuditoria = {
+  id: number;
+  usuario: string | null;
+  accion: string;
+  detalle: string | null;
+  ip: string | null;
+  fecha: string;
+};
+
 export const adminApi = {
+  /** Últimas 100 acciones, de la más reciente a la más antigua. */
+  auditoria: (token: string) => api<EventoAuditoria[]>('/api/auditoria', { token }),
+
   roles: (token: string) => api<string[]>('/api/roles', { token }),
 
   usuarios: (token: string) => api<UsuarioAdmin[]>('/api/usuarios', { token }),
