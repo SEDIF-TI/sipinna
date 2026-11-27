@@ -1,6 +1,7 @@
 package com.sippina.gob.mx.service;
 
 import com.sippina.gob.mx.dto.BeneficiariosDto;
+import com.sippina.gob.mx.dto.HistorialItem;
 import com.sippina.gob.mx.dto.ItemCatalogo;
 import com.sippina.gob.mx.dto.RegistroProespinnaRequest;
 import com.sippina.gob.mx.dto.RegistroProespinnaResponse;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Captura del formato PROESPINNA.
@@ -33,19 +35,22 @@ public class RegistroProespinnaService {
     private final MunicipioRepository municipioRepository;
     private final PeriodoService periodoService;
     private final AuditoriaService auditoriaService;
+    private final HistorialRegistroService historialService;
 
     public RegistroProespinnaService(RegistroProespinnaRepository registroRepository,
                                      UsuarioRepository usuarioRepository,
                                      EstrategiaRepository estrategiaRepository,
                                      MunicipioRepository municipioRepository,
                                      PeriodoService periodoService,
-                                     AuditoriaService auditoriaService) {
+                                     AuditoriaService auditoriaService,
+                                     HistorialRegistroService historialService) {
         this.registroRepository = registroRepository;
         this.usuarioRepository = usuarioRepository;
         this.estrategiaRepository = estrategiaRepository;
         this.municipioRepository = municipioRepository;
         this.periodoService = periodoService;
         this.auditoriaService = auditoriaService;
+        this.historialService = historialService;
     }
 
     @Transactional(readOnly = true)
@@ -61,6 +66,13 @@ public class RegistroProespinnaService {
         return aRespuesta(buscarPropio(id, usuario(username)));
     }
 
+    /** Historial de estatus de un registro de mi secretaría. */
+    @Transactional(readOnly = true)
+    public List<HistorialItem> historial(Long id, String username) {
+        RegistroProespinna r = buscarPropio(id, usuario(username));
+        return historialService.de(r.getId());
+    }
+
     @Transactional
     public RegistroProespinnaResponse crear(RegistroProespinnaRequest datos, String username) {
         Usuario u = usuario(username);
@@ -69,6 +81,7 @@ public class RegistroProespinnaService {
         r.setCreadoPor(u);
         aplicar(r, datos);
         r = registroRepository.save(r);
+        historialService.registrar(r, null, EstatusRegistro.BORRADOR, "Registro creado", u);
         auditoriaService.registrar(username, "REGISTRO_CREADO", "PROESPINNA #" + r.getId());
         return aRespuesta(r);
     }
@@ -88,15 +101,19 @@ public class RegistroProespinnaService {
         if (r.getEstatus() != EstatusRegistro.BORRADOR) {
             throw NegocioException.invalido("Solo se pueden eliminar registros en borrador");
         }
+        historialService.borrarDe(r.getId());
         registroRepository.delete(r);
         auditoriaService.registrar(username, "REGISTRO_ELIMINADO", "PROESPINNA #" + id);
     }
 
     @Transactional
     public RegistroProespinnaResponse enviar(Long id, String username) {
-        RegistroProespinna r = buscarPropio(id, usuario(username));
+        Usuario u = usuario(username);
+        RegistroProespinna r = buscarPropio(id, u);
         exigirEditable(r);
-        if (!r.getPeriodo().isAbierto()) {
+        EstatusRegistro anterior = r.getEstatus();
+        // Una corrección pedida por la Ejecutiva se puede reenviar aunque el trimestre ya esté cerrado
+        if (anterior == EstatusRegistro.BORRADOR && !r.getPeriodo().isAbierto()) {
             throw NegocioException.invalido("El periodo de captura está cerrado");
         }
         if (r.getTotalNna() == 0) {
@@ -104,7 +121,10 @@ public class RegistroProespinnaService {
         }
         r.setEstatus(EstatusRegistro.ENVIADO);
         r.setFechaEnvio(LocalDateTime.now());
-        auditoriaService.registrar(username, "REGISTRO_ENVIADO", "PROESPINNA #" + r.getId());
+        historialService.registrar(r, anterior, EstatusRegistro.ENVIADO,
+                anterior == EstatusRegistro.OBSERVADO ? "Reenviado con correcciones" : "Enviado a revisión", u);
+        auditoriaService.registrar(username, anterior == EstatusRegistro.OBSERVADO ? "REGISTRO_REENVIADO" : "REGISTRO_ENVIADO",
+                "PROESPINNA #" + r.getId());
         return aRespuesta(r);
     }
 
@@ -113,7 +133,10 @@ public class RegistroProespinnaService {
     /** Copia los datos del formulario al registro, validando las reglas del formato. */
     private void aplicar(RegistroProespinna r, RegistroProespinnaRequest d) {
         PeriodoCaptura periodo = periodoService.buscar(d.periodoId());
-        if (!periodo.isAbierto()) {
+        // Al corregir un registro OBSERVADO se permite su mismo periodo aunque ya esté cerrado
+        boolean correccionMismoPeriodo = r.getEstatus() == EstatusRegistro.OBSERVADO
+                && r.getPeriodo() != null && Objects.equals(r.getPeriodo().getId(), periodo.getId());
+        if (!periodo.isAbierto() && !correccionMismoPeriodo) {
             throw NegocioException.invalido("El periodo de captura está cerrado");
         }
         Estrategia estrategia = estrategiaRepository.findById(d.estrategiaId())
@@ -195,7 +218,8 @@ public class RegistroProespinnaService {
         return texto == null || texto.isBlank() ? null : texto.trim();
     }
 
-    private RegistroProespinnaResponse aRespuesta(RegistroProespinna r) {
+    /** También lo usa SeguimientoService para no repetir el mapeo. */
+    RegistroProespinnaResponse aRespuesta(RegistroProespinna r) {
         BeneficiariosProespinna b = r.getBeneficiarios();
         List<ItemCatalogo> municipios = r.getMunicipios().stream()
                 .sorted(Comparator.comparing(Municipio::getNombre))
@@ -224,6 +248,7 @@ public class RegistroProespinnaService {
                 r.getCreadoPor().getUsername(),
                 r.getFechaCreacion(),
                 r.getFechaActualizacion(),
-                r.getFechaEnvio());
+                r.getFechaEnvio(),
+                historialService.ultimaObservacion(r));
     }
 }
