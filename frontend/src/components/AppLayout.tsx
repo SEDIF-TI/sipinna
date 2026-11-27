@@ -11,7 +11,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useSesion } from '../auth/AuthContext';
 import { nombreDelRol } from '../auth/types';
-import { MODULOS, RutaPrivada, tituloDeRuta } from '../navigation/rutas';
+import { iconoDeRuta, RutaPrivada, rutasDelUsuario, tituloDeRuta } from '../navigation/rutas';
 import { colors } from '../theme';
 
 type Props = {
@@ -28,7 +28,7 @@ export default function AppLayout({ ruta, onNavegar, children }: Props) {
   const escritorio = width >= ANCHO_ESCRITORIO;
   const [saliendo, setSaliendo] = useState(false);
 
-  const rutas: RutaPrivada[] = ['inicio', ...modulos];
+  const rutas = rutasDelUsuario(modulos, usuario.rol);
   const rol = nombreDelRol(usuario.rol);
   const iniciales = usuario.username.slice(0, 2).toUpperCase();
 
@@ -39,7 +39,7 @@ export default function AppLayout({ ruta, onNavegar, children }: Props) {
 
   const menu = rutas.map((r) => {
     const activo = r === ruta;
-    const icono = r === 'inicio' ? 'home-outline' : MODULOS[r].icono;
+    const icono = iconoDeRuta(r);
     return (
       <Pressable
         key={r}
