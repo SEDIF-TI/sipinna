@@ -3,12 +3,13 @@ package com.sippina.gob.mx.config;
 import com.sippina.gob.mx.repository.UsuarioRepository;
 import com.sippina.gob.mx.security.JwtAuthenticationFilter;
 import com.sippina.gob.mx.security.SeguridadJsonHandler;
-
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -20,13 +21,16 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.ArrayList;
 import java.util.List;
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity
 public class SecurityConfig {
 
     @Bean
@@ -57,11 +61,12 @@ public class SecurityConfig {
             .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado"));
     }
 
-       @Bean
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http,
                                            JwtAuthenticationFilter jwtFilter,
                                            SeguridadJsonHandler seguridadJsonHandler) throws Exception {
         http
+            .cors(Customizer.withDefaults())
             .csrf(csrf -> csrf.disable())
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
@@ -73,5 +78,20 @@ public class SecurityConfig {
                 .accessDeniedHandler(seguridadJsonHandler))
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
+    }
+
+    // CORS: qué páginas (orígenes) pueden llamar a la API desde el navegador
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${cors.allowed-origins}") List<String> origenesPermitidos) {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(origenesPermitidos);
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+        config.setAllowedHeaders(List.of("Authorization", "Content-Type"));
+        config.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
     }
 }

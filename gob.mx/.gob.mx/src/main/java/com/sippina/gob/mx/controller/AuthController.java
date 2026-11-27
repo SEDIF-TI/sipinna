@@ -6,9 +6,12 @@ import com.sippina.gob.mx.dto.UsuarioActualResponse;
 import com.sippina.gob.mx.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,5 +28,12 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UsuarioActualResponse> me(Authentication authentication) {
         return ResponseEntity.ok(authService.usuarioActual(authentication.getName()));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Map<String, String>> logout(
+            @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization) {
+        authService.logout(authorization.substring("Bearer ".length()));
+        return ResponseEntity.ok(Map.of("mensaje", "Sesión cerrada correctamente"));
     }
 }
