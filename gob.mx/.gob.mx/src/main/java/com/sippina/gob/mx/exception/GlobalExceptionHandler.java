@@ -37,13 +37,20 @@ public class GlobalExceptionHandler {
         return responder(HttpStatus.BAD_REQUEST, "El cuerpo de la petición no es un JSON válido", request, null);
     }
 
+    // 400: enlace de recuperación inexistente, usado o caducado
+    @ExceptionHandler(TokenRecuperacionInvalidoException.class)
+    public ResponseEntity<ErrorResponse> tokenRecuperacionInvalido(TokenRecuperacionInvalidoException ex,
+                                                                   HttpServletRequest request) {
+        return responder(HttpStatus.BAD_REQUEST, ex.getMessage(), request, null);
+    }
+
     // 401: usuario inexistente, inactivo o contraseña incorrecta (un solo mensaje)
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> credencialesInvalidas(HttpServletRequest request) {
         return responder(HttpStatus.UNAUTHORIZED, "Correo o contraseña incorrectos", request, null);
     }
 
-    // 403: autenticado pero sin permiso (Parte 5)
+    // 403: autenticado pero sin permiso
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> accesoDenegado(HttpServletRequest request) {
         return responder(HttpStatus.FORBIDDEN, "No tienes permiso para realizar esta acción", request, null);
