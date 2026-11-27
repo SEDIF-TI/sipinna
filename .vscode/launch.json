@@ -1,0 +1,13 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Backend SIPINNA",
+      "request": "launch",
+      "mainClass": "com.sippina.gob.mx.Application",
+      "projectName": ".gob.mx",
+      "cwd": "${workspaceFolder}/gob.mx/.gob.mx"
+    }
+  ]
+}

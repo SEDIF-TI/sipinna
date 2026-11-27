@@ -12,14 +12,16 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radius } from '../theme';
+import { useAuth } from '../auth/AuthContext';
+import { ApiError } from '../api/client';
 
 type Props = {
-  /** Se llama al enviar el formulario. Aquí se conectará POST /api/auth/login. */
-  onSubmit?: (usuario: string, contrasena: string) => Promise<void> | void;
   onForgotPassword?: () => void;
 };
 
-export default function LoginScreen({ onSubmit, onForgotPassword }: Props) {
+export default function LoginScreen({ onForgotPassword }: Props) {
+  const { estado, iniciarSesion } = useAuth();
+  const aviso = estado.tipo === 'sinSesion' ? estado.aviso : null;
   const [usuario, setUsuario] = useState('');
   const [contrasena, setContrasena] = useState('');
   const [mostrar, setMostrar] = useState(false);
@@ -28,6 +30,7 @@ export default function LoginScreen({ onSubmit, onForgotPassword }: Props) {
   const [focus, setFocus] = useState<'usuario' | 'contrasena' | null>(null);
 
   const handleSubmit = async () => {
+    if (cargando) return;
     if (!usuario.trim() || !contrasena) {
       setError('Ingresa tu usuario y contraseña.');
       return;
@@ -35,12 +38,17 @@ export default function LoginScreen({ onSubmit, onForgotPassword }: Props) {
     setError(null);
     setCargando(true);
     try {
-      await onSubmit?.(usuario.trim(), contrasena);
+      await iniciarSesion(usuario.trim(), contrasena);
+      // Al iniciar sesión esta pantalla se desmonta; no hay que tocar estado.
+      return;
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión.');
-    } finally {
-      setCargando(false);
+      if (e instanceof ApiError && e.detalles) {
+        setError(Object.values(e.detalles).join(' '));
+      } else {
+        setError(e instanceof Error ? e.message : 'No se pudo iniciar sesión.');
+      }
     }
+    setCargando(false);
   };
 
   return (
@@ -137,6 +145,10 @@ export default function LoginScreen({ onSubmit, onForgotPassword }: Props) {
               <Text style={styles.error} accessibilityLiveRegion="polite">
                 {error}
               </Text>
+            ) : aviso ? (
+              <Text style={styles.aviso} accessibilityLiveRegion="polite">
+                {aviso}
+              </Text>
             ) : null}
 
             <Pressable
@@ -215,7 +227,15 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   inputFocused: { borderColor: colors.primary, borderWidth: 2 },
-  input: { fontSize: 16, color: colors.text, paddingHorizontal: 14 },
+  // En web el navegador dibuja su propio recuadro de foco dentro del campo;
+  // se oculta porque el foco ya se marca con el borde rosa (inputFocused).
+  input: {
+    fontSize: 16,
+    color: colors.text,
+    paddingHorizontal: 14,
+    // 'none' existe en CSS pero no en los tipos de React Native.
+    ...(Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null),
+  },
   passwordRow: { flexDirection: 'row', alignItems: 'center', paddingRight: 4 },
   passwordInput: { flex: 1, height: '100%', minWidth: 0 },
   eyeButton: {
@@ -226,6 +246,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.control,
   },
   error: { color: colors.error, fontSize: 14 },
+  aviso: { color: colors.textMuted, fontSize: 14 },
   button: {
     height: 52,
     borderRadius: radius.control,

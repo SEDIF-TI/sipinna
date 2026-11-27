@@ -1,16 +1,12 @@
 import { StatusBar } from 'expo-status-bar';
-import LoginScreen from './src/screens/LoginScreen';
+import { AuthProvider } from './src/auth/AuthContext';
+import AppNavigator from './src/navigation/AppNavigator';
 
 export default function App() {
   return (
-    <>
-      <LoginScreen
-        onSubmit={async (usuario) => {
-          // TODO: conectar con POST /api/auth/login del backend.
-          console.log('Iniciar sesión', usuario);
-        }}
-      />
+    <AuthProvider>
+      <AppNavigator />
       <StatusBar style="dark" />
-    </>
+    </AuthProvider>
   );
 }
