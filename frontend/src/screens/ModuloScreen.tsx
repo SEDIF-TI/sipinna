@@ -18,8 +18,9 @@ export default function ModuloScreen({ modulo }: { modulo: Modulo }) {
   >({ tipo: 'cargando' });
 
   useEffect(() => {
+    // No hace falta volver a 'cargando': el navegador monta una pantalla
+    // nueva por módulo (key={modulo}).
     let cancelado = false;
-    setEstado({ tipo: 'cargando' });
     api<Respuesta>(`/api/panel/${modulo}`, { token })
       .then((r) => !cancelado && setEstado({ tipo: 'ok', titulo: r.modulo }))
       .catch(
